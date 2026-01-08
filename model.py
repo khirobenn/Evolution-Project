@@ -1,5 +1,7 @@
 import random
 import numpy as np
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 import pygame
 
 DEBUT_LECTURE = "ATG"
@@ -154,43 +156,29 @@ def generate_sequence(length=-1):
         s = s+generate_letter()
     return s
 
-def add_letter(arn, index):
-    letter = generate_letter()
-    return arn[:index] + letter + arn[index:]
 
-def delete_letter(arn, index):
-    return arn[:index] + arn[index+1:]
-
-def change_letter(arn, index):
-    letter = generate_letter()
-    return arn[:index] + letter + arn[index+1:]
-
-
-def changement(arn, index):
-    current_length = len(arn)
+def changement(arn, PROB_M=5, PROB_D=5, PROB_A=5):
 
     p = random.choice(range(0, 100))
     if p < PROB_M:
-        arn = change_letter(arn, index)
+        arn = generate_letter()
 
     p = random.choice(range(0, 100))
     if p < PROB_A:
-        arn = add_letter(arn, index)
-        index = index + 1
-
+        arn = arn + generate_letter()
 
     p = random.choice(range(0,100))
     if p < PROB_D:
-        arn = delete_letter(arn, index)
+        arn = arn[1:]
 
     return arn
 
-def sequence_changement(arn):
+def sequence_changement(arn, PROB_M=5, PROB_D=5, PROB_A=5):
     if arn == '':
         return ''
-    return changement(arn[0:1], 0) + sequence_changement(arn[1:])
+    return changement(arn[0:1]) + sequence_changement(arn[1:], PROB_M, PROB_D, PROB_A)
 
-def meilleur_personne(WIDTH, HEIGHT, RADIUS, screen=None):
+def meilleur_personne(WIDTH, HEIGHT, RADIUS, screen=None, PROB_M=5, PROB_D=5, PROB_A=5):
     result =  []
     generated_adn = generate_sequence()
     g_adn = generated_adn
@@ -207,7 +195,7 @@ def meilleur_personne(WIDTH, HEIGHT, RADIUS, screen=None):
         pop_sequences = [""]*CONST_POPULATION
         occurences = [None]*CONST_POPULATION
         for i in range(0, CONST_POPULATION):
-            pop_sequences[i] = sequence_changement(generated_adn)
+            pop_sequences[i] = sequence_changement(generated_adn, PROB_M, PROB_D, PROB_A)
             occurences[i] = compare_two_sequences(ADN, pop_sequences[i])
 
             if screen != None:
@@ -283,3 +271,41 @@ def moran_v1(WIDTH, HEIGHT, RADIUS, screen=None):
 
 
     return g_adn, result, loop
+
+
+PROBA_MIN = 3
+PROBA_MAX = 5
+proba_mut = range(PROBA_MIN, PROBA_MAX+1)
+proba_del = range(1, 4)
+proba_add = range(1, 4)
+
+mutation, deletion, addition = np.meshgrid(proba_mut, proba_del, proba_add)
+
+generations = []
+
+for i in range(len(proba_mut)):
+    first_loop = []
+    for j in range(len(proba_del)):
+        second_loop = []
+        for k in range(len(proba_add)):
+            print("proba_mut =", mutation[i, j, k], ", proba_delete =", deletion[i, j, k], " proba_add =", addition[i, j, k])
+            ADN_depart, result, loop = meilleur_personne(0, 0, 0, screen=None, PROB_M=mutation[i, j, k], PROB_D=deletion[i, j, k], PROB_A=addition[i, j, k])
+            print("Nombre de générations :", loop)
+            second_loop.append(loop)
+        first_loop.append(second_loop)
+    generations.append(first_loop)
+
+
+
+generations = np.array(generations)
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+img = ax.scatter(mutation, deletion, generations, c=addition, cmap=plt.plasma())
+fig.colorbar(img)
+plt.show()
+
+ADN_depart, result, loop = meilleur_personne(proba_mut = 5, proba_delete = 3, proba_addition = 4)
+
+print(loop)
